@@ -1,0 +1,69 @@
+# Local development stack. Neither service is required to run the demo against
+# real Google Cloud Firestore and the MongoDB VM - they exist so the whole thing
+# can run offline.
+#
+#   docker compose up -d
+#   cd backend && FIRESTORE_EMULATOR_HOST=localhost:8080 \
+#                 MONGODB_URI=mongodb://127.0.0.1:27019/?directConnection=true \
+#                 npm run seed -- --players 200
+#
+# Note the emulator binds 8080, which is also the API's default port. Either run
+# the API on another port (PORT=8081) or remap the emulator below.
+
+services:
+  firestore-emulator:
+    image: google/cloud-sdk:emulators
+    container_name: aegis-firestore-emulator
+    command: >
+      gcloud emulators firestore start
+        --host-port=0.0.0.0:8080
+        --database-mode=firestore-native
+    ports:
+      - '8080:8080'
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:8080/']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # Single-node replica set, unlike the standalone mongod on the demo VM. This
+  # is what lets you exercise the multi-document transaction and change-stream
+  # paths locally - the adapter detects the deployment and switches behaviour.
+  mongo:
+    image: mongo:8
+    container_name: aegis-mongo
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27019:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand({ping:1})']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  mongo-init:
+    image: mongo:8
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: 'no'
+    command: >
+      mongosh --host mongo:27017 --quiet --eval
+      "try { rs.status() } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27019'}]}) }"
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: aegis-mongo-ui
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/?directConnection=true
+      ME_CONFIG_BASICAUTH: 'false'
+
+volumes:
+  mongo-data:

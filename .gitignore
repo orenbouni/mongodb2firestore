@@ -1,0 +1,57 @@
+# ---- dependencies ----
+node_modules/
+.pnp
+.pnp.js
+
+# ---- build output ----
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# ---- environment & secrets ----
+# .env holds the real project id, VM name and IPs. Only .env.example is tracked,
+# and it carries placeholders.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+gcp-credentials*.json
+application_default_credentials.json
+
+# ---- local runtime state ----
+.run/
+*.log
+npm-debug.log*
+yarn-error.log*
+pids/
+*.pid
+
+# ---- local tooling that records this machine's environment ----
+# settings.local.json accumulates allowlisted commands containing real host
+# names and IPs; run.sh is a personal launcher holding a project id.
+.claude/settings.local.json
+run.sh
+
+# ---- emulator / database scratch ----
+firebase-debug.log
+firestore-debug.log
+.firebase/
+mongo-data/
+
+# ---- editors & OS ----
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---- test & coverage ----
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+image*/

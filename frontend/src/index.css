@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-plane text-ink-primary font-sans antialiased;
+  }
+
+  /* Columns of numbers must align; standalone figures keep proportional forms. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-hairline bg-surface;
+  }
+
+  .card-pad {
+    @apply p-4;
+  }
+
+  .label {
+    @apply text-[11px] font-medium uppercase tracking-wider text-ink-muted;
+  }
+
+  .field {
+    @apply rounded-md border border-hairline bg-plane px-2.5 py-1.5 text-sm text-ink-primary
+           outline-none focus:border-seq-400 focus:ring-1 focus:ring-seq-400;
+  }
+
+  .btn {
+    @apply rounded-md border border-hairline bg-surfaceRaised px-3 py-1.5 text-sm font-medium
+           text-ink-primary transition-colors hover:bg-grid disabled:cursor-not-allowed
+           disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply rounded-md bg-seq-500 px-3 py-1.5 text-sm font-semibold text-white transition-colors
+           hover:bg-seq-400 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-danger {
+    @apply rounded-md border border-critical/40 bg-transparent px-3 py-1.5 text-sm font-medium
+           text-critical transition-colors hover:bg-critical/10 disabled:cursor-not-allowed
+           disabled:opacity-40;
+  }
+}
+
+/* Scrollbars that recede into the surface rather than competing with the data. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0d0d0d;
+}
+::-webkit-scrollbar-thumb {
+  background: #2c2c2a;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #383835;
+}

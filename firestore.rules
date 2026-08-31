@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// Aegis Legends: Galactic Arena - production security rules.
+//
+// The backend in this repo talks to Firestore through the Admin SDK with
+// roles/datastore.user, which bypasses these rules entirely. They exist for the
+// case that actually needs them: a game client reading Firestore directly with
+// the Web/Mobile SDK so it can use onSnapshot without a server hop.
+//
+// The governing principle is that a client may read what the game shows and
+// write nothing that carries value. Currency, MMR, match results and lobby
+// membership are all server-authoritative - a client that could write them
+// could mint credits or fake a win.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(playerId) {
+      return signedIn() && request.auth.uid == playerId;
+    }
+
+    // Fields a player is allowed to change on their own profile. Everything
+    // else (mmr, stats, currency, rankTier) is written only by the backend.
+    function onlyMutatesOwnedProfileFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['username', 'lastLoginAt']);
+    }
+
+    match /players/{playerId} {
+      // Profiles are public: leaderboards and lobby rosters need them.
+      allow read: if signedIn();
+
+      allow create: if isSelf(playerId)
+                    && request.resource.data.mmr == 1000
+                    && request.resource.data.currency.credits == 0
+                    && request.resource.data.currency.plasmaCores == 0;
+
+      allow update: if isSelf(playerId) && onlyMutatesOwnedProfileFields();
+
+      // Account deletion runs through a backend flow that also cleans up
+      // sub-collections and lobby membership.
+      allow delete: if false;
+
+      match /inventory/{itemId} {
+        // Loadouts are private to the owner.
+        allow read: if isSelf(playerId);
+
+        // Acquiring an item must go through the purchase transaction, which
+        // debits currency atomically. Clients may only toggle isEquipped.
+        allow create, delete: if false;
+        allow update: if isSelf(playerId)
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['isEquipped']);
+      }
+    }
+
+    match /lobbies/{lobbyId} {
+      // The lobby browser is public to signed-in players.
+      allow read: if signedIn();
+      // Joining and leaving run as transactions on the backend so capacity and
+      // status transitions stay consistent under concurrency.
+      allow write: if false;
+    }
+
+    match /matches/{matchId} {
+      // Match history is readable; results are written only by the match server.
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /leaderboards/{document=**} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
