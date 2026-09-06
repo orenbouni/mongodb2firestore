@@ -34,7 +34,22 @@ cd backend
 cp .env.example .env       # fill in your project id, VM name and zone
 ```
 
-Then three terminals:
+Then one command from the repo root:
+
+```bash
+./start.sh
+```
+
+It opens the IAP tunnel, starts the API and the dashboard, and pings both engines
+before handing back control — so a broken credential or an unreachable VM shows up
+as a failed check rather than an empty panel. Ctrl-C stops all three.
+
+```
+  --no-tunnel    skip the tunnel (Firestore only, or one is already running)
+  --seed         reseed both sources first
+```
+
+Or run the three pieces by hand, in three terminals:
 
 ```bash
 # 1 - IAP tunnel to the MongoDB VM (leave running)
@@ -165,8 +180,8 @@ The demo does not pretend the engines are interchangeable.
 Firestore pushes changes over gRPC. MongoDB change streams require a replica set, and a
 single standalone `mongod` has none — so the Mongo adapter polls every 1.5 s and emits only
 when the payload changed. The connection panel names the mechanism in use rather than
-implying both are push. Start the bundled `docker-compose.yml` stack and you get a
-single-node replica set; the adapter detects it and the panel updates.
+implying both are push. Point `MONGODB_URI` at a replica set instead and the adapter
+detects it via the `hello` command and the panel updates.
 
 ### Transactions are not symmetric either
 
@@ -248,20 +263,21 @@ gcloud compute ssh <vm-name> --zone=<zone> --tunnel-through-iap \
 
 ---
 
-## Local-only stack
+## Running against a local Firestore
 
-`docker-compose.yml` brings up the Firestore emulator and a single-node MongoDB replica set so
-the demo runs with no cloud dependency:
+The demo targets real Firestore and the real VM, which is the point of it — the numbers in the
+console are the ones you are watching. If you need an offline Firestore anyway, the emulator is
+still supported — point the client at it directly:
 
 ```bash
-docker compose up -d
+gcloud emulators firestore start --host-port=localhost:8200 --database-mode=firestore-native
+
 cd backend
-FIRESTORE_EMULATOR_HOST=localhost:8080 \
-MONGODB_URI=mongodb://127.0.0.1:27019/?directConnection=true \
-  npm run seed -- --players 200
+FIRESTORE_EMULATOR_HOST=localhost:8200 npm run seed -- --players 200
+FIRESTORE_EMULATOR_HOST=localhost:8200 ./start.sh --no-tunnel
 ```
 
-The emulator binds 8080, which is also the API's default port — set `PORT=8081` or remap. When
+Pick a port other than 8080 for the emulator — that is the API's default. When
 `FIRESTORE_EMULATOR_HOST` is set the client skips credential resolution entirely, and the
 connection panel says so.
 
@@ -320,7 +336,8 @@ frontend/src/
                 ControlPanel, charts, primitives
   hooks/        useLiveStream.ts (SSE)
   services/     api.ts
-firestore.rules · firestore.indexes.json · docker-compose.yml
+firestore.rules · firestore.indexes.json
+start.sh        one command: tunnel + API + dashboard, both sources verified
 scripts/        deploy-indexes.sh · mongo-tunnel.sh
 ```
 
